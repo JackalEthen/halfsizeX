@@ -1,4 +1,8 @@
-# halfsizeX
+<p align="center">
+  <img src="app/assets/icon.png" alt="halfsizeX icon" width="160">
+</p>
+
+<h1 align="center">halfsizeX</h1>
 
 **Compress a video to an exact size, locally. No upload, no account, no telemetry.**
 

@@ -1,4 +1,8 @@
-# halfsizeX
+<p align="center">
+  <img src="app/assets/icon.png" alt="halfsizeX 图标" width="160">
+</p>
+
+<h1 align="center">halfsizeX</h1>
 
 **把视频压到指定大小，全程本地。不上传、不登录、无遥测。**
 
