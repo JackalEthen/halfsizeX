@@ -93,7 +93,7 @@ jobs:
       - name: Install WiX
         shell: pwsh
         run: |
-          dotnet tool install --global wix
+          dotnet tool install --global wix --version 5.0.2
           "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Download FFmpeg
@@ -157,7 +157,9 @@ jobs:
           set -euo pipefail
           curl -L -o /tmp/appimagetool 'https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage'
           chmod +x /tmp/appimagetool
-          echo "APPIMAGETOOL=/tmp/appimagetool" >> "$GITHUB_ENV"
+          mkdir -p /tmp/appimagetool-extract
+          (cd /tmp/appimagetool-extract && /tmp/appimagetool --appimage-extract >/dev/null)
+          echo "APPIMAGETOOL=/tmp/appimagetool-extract/squashfs-root/AppRun" >> "$GITHUB_ENV"
 
       - name: Build Linux bundle and packages
         shell: bash
