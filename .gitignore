@@ -1,0 +1,30 @@
+# Local scratch space
+Temp/
+*.log
+*.tmp
+
+# Not part of the public repository
+SPEC.md
+design/
+
+# Flutter / Dart
+app/.dart_tool/
+app/.flutter-plugins-dependencies
+app/.packages
+app/build/
+app/android/build/
+app/android/app/build/
+app/dist/
+app/.idea/
+app/*.iml
+
+# Android
+app/android/.gradle/
+app/android/local.properties
+app/android/key.properties
+app/android/*.jks
+app/android/*.keystore
+
+# Linux / Windows generated files
+app/linux/flutter/ephemeral/
+app/windows/flutter/ephemeral/
