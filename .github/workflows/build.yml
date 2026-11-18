@@ -101,9 +101,12 @@ jobs:
         run: |
           $zip = Join-Path $env:RUNNER_TEMP 'ffmpeg.zip'
           $dir = Join-Path $env:RUNNER_TEMP 'ffmpeg'
-          Invoke-WebRequest -Uri 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip' -OutFile $zip
+          $url = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip'
+          curl.exe -fL --retry 5 --retry-delay 5 -o "$zip" "$url"
+          if ($LASTEXITCODE -ne 0) { throw "FFmpeg download failed with $LASTEXITCODE" }
           Expand-Archive -LiteralPath $zip -DestinationPath $dir -Force
           $root = (Get-ChildItem -LiteralPath $dir -Directory | Select-Object -First 1).FullName
+          if (-not $root) { throw 'FFmpeg archive did not contain a directory' }
           "FFMPEG_DIR=$(Join-Path $root 'bin')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build installer and portable ZIP
@@ -146,7 +149,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -L -o /tmp/ffmpeg.tar.xz 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz'
+          curl -fL --retry 5 --retry-delay 5 -o /tmp/ffmpeg.tar.xz 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz'
           mkdir -p /tmp/ffmpeg
           tar -xJf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg --strip-components=1
           echo "FFMPEG_DIR=/tmp/ffmpeg/bin" >> "$GITHUB_ENV"
@@ -155,7 +158,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -L -o /tmp/appimagetool 'https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage'
+          curl -fL --retry 5 --retry-delay 5 -o /tmp/appimagetool 'https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage'
           chmod +x /tmp/appimagetool
           mkdir -p /tmp/appimagetool-extract
           (cd /tmp/appimagetool-extract && /tmp/appimagetool --appimage-extract >/dev/null)
@@ -207,17 +210,19 @@ jobs:
           esac
           base='https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1'
           mkdir -p "$RUNNER_TEMP/ffmpeg"
-          curl -fL -o "$RUNNER_TEMP/ffmpeg/ffmpeg" "$base/ffmpeg-darwin-$suffix"
-          curl -fL -o "$RUNNER_TEMP/ffmpeg/ffprobe" "$base/ffprobe-darwin-$suffix"
-          curl -fL -o "$RUNNER_TEMP/ffmpeg/LICENSE" "$base/darwin-$suffix.LICENSE"
+          curl -fL --retry 5 --retry-delay 5 -o "$RUNNER_TEMP/ffmpeg/ffmpeg" "$base/ffmpeg-darwin-$suffix"
+          curl -fL --retry 5 --retry-delay 5 -o "$RUNNER_TEMP/ffmpeg/ffprobe" "$base/ffprobe-darwin-$suffix"
+          curl -fL --retry 5 --retry-delay 5 -o "$RUNNER_TEMP/ffmpeg/LICENSE" "$base/darwin-$suffix.LICENSE"
           chmod +x "$RUNNER_TEMP/ffmpeg/ffmpeg" "$RUNNER_TEMP/ffmpeg/ffprobe"
           echo "FFMPEG_DIR=$RUNNER_TEMP/ffmpeg" >> "$GITHUB_ENV"
 
-      - name: Build and package
+      - name: Build macOS app
         shell: bash
-        run: |
-          flutter build macos --release
-          bash tool/package_macos.sh
+        run: flutter build macos --release
+
+      - name: Package macOS app
+        shell: bash
+        run: bash tool/package_macos.sh
 
       - uses: actions/upload-artifact@v4
         with:
