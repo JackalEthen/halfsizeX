@@ -41,6 +41,7 @@ class CompressController extends ChangeNotifier {
   int? crf;
   EncodeToSizeResult? result;
   String? error;
+  String? outputName;
   FfmpegInfo bins = FfmpegInfo.missing;
 
   EncodeCancelToken? _cancel;
@@ -60,6 +61,28 @@ class CompressController extends ChangeNotifier {
     preset = s?.defaultPreset ?? 'medium';
     qualityCheck = s?.qualityCheck ?? true;
     platformPreset = null;
+  }
+
+  void configure({
+    required int targetBytes,
+    required String codec,
+    required String preset,
+    required bool downscale,
+    required bool audio,
+    required bool qualityCheck,
+    String? outputName,
+  }) {
+    _customized = true;
+    this.targetBytes = targetBytes;
+    platformPreset = null;
+    crf = null;
+    this.codec = codec;
+    this.preset = preset;
+    this.downscale = downscale;
+    this.audio = audio;
+    this.qualityCheck = qualityCheck;
+    this.outputName = outputName;
+    _replan();
   }
 
   Future<void> pick() async {
@@ -301,6 +324,7 @@ class CompressController extends ChangeNotifier {
     quality = null;
     verdict = null;
     error = null;
+    outputName = null;
     _notify();
   }
 
@@ -313,7 +337,10 @@ class CompressController extends ChangeNotifier {
             Directory(configured).existsSync()
         ? configured
         : p.dirname(input);
-    final base = '${p.basenameWithoutExtension(input)}.$fileTag';
+    final custom = outputName?.trim();
+    final base = custom != null && custom.isNotEmpty
+        ? _safeName(p.basenameWithoutExtension(custom))
+        : '${p.basenameWithoutExtension(input)}.$fileTag';
     var candidate = p.join(dir, '$base.mp4');
     var index = 2;
     while (File(candidate).existsSync()) {
@@ -321,6 +348,11 @@ class CompressController extends ChangeNotifier {
       index++;
     }
     return candidate;
+  }
+
+  static String _safeName(String value) {
+    final cleaned = value.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+    return cleaned.isEmpty ? 'video' : cleaned;
   }
 
   static String _targetLabel(int bytes) {

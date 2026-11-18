@@ -8,7 +8,7 @@
 
 [简体中文](README-zh.md) | English
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](./SPEC.md)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](./SPEC.md)
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.11-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Windows](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white)](#supported-clients)
@@ -38,15 +38,20 @@ bundled FFmpeg supports it.
 ### Implemented
 
 - Exact target size in MB, plus platform presets (Discord, WhatsApp, WeChat, Gmail, Outlook, X).
-- Custom target size and CRF mode.
+- Custom target size and optional per-task output filename.
 - H.264 (`libx264`) and H.265 (`libx265`) with selectable preset.
 - Two-pass size-targeted encoding; automatic retry when the first result overshoots.
 - Automatic downscale selection, with an option to keep the original resolution.
 - Keep or drop audio; mono/stereo handling and audio bitrate budget.
 - HDR (PQ/HLG) detection and HDR-to-SDR tone mapping when the FFmpeg build supports it.
 - Progress, speed, ETA, pass number, cancel, and cleanup of partial files.
+- Batch queue: select multiple videos, share one setting set, compress serially.
+- Task page with per-task detail, retry/cancel, output path, and persisted history.
+- Share card export as PNG; native share sheet on Android.
+- Desktop FFmpeg repair: detect missing binaries and install a Windows/Linux build.
 - VMAF / SSIM quality measurement with a human-readable verdict.
-- Safe output naming (`name.tag.mp4`, collision suffixes) and a configurable output directory.
+- Safe output naming (`name.tag.mp4`, per-task names, collision suffixes) and a configurable output directory.
+- Three-tab navigation: Compress, Tasks, Settings.
 - Drag and drop on desktop; native file picker on all platforms.
 - Embedded video preview on Windows (original / compressed), powered by `media_kit`.
 - Android foreground service with notification progress; SAF input and MediaStore Downloads output.
@@ -56,10 +61,9 @@ bundled FFmpeg supports it.
 
 ### Not implemented yet
 
-- Batch queue (planned for v0.2).
-- Share cards.
 - macOS build and packaging (interfaces are kept platform-neutral).
-- Auto-update, file associations, and first-run FFmpeg download.
+- Automatic FFmpeg install on macOS.
+- Auto-update and file associations.
 - Hardware-accelerated encoding (current builds use software x264/x265).
 - Subtitle retention.
 
@@ -113,6 +117,10 @@ the FFmpeg DLLs:
 
 The script needs [WiX](https://wixtoolset.org/) (`dotnet tool install --global wix`).
 
+A Debug run does not contain FFmpeg. It looks in `build/windows/x64/runner/Release/bin`,
+`HALFSIZE_FFMPEG`, or the path installed by the Settings repair button. Release packages include
+FFmpeg in their `bin` directory.
+
 ### Android
 
 ```bash
@@ -161,8 +169,8 @@ and GPL notes. The app never replaces or hides FFmpeg's license.
 
 ```text
 app/                 Flutter application
-  lib/core/          probe, plan, encode, quality, FFmpeg locator, settings
-  lib/features/      compress and settings UI
+  lib/core/          probe, plan, encode, quality, FFmpeg locator/installer, settings
+  lib/features/      compress, tasks, settings UI
   android/           Android runner, service, jniLibs
   windows/           Windows runner and installer script
   linux/             Linux runner, desktop entry and icon install rules

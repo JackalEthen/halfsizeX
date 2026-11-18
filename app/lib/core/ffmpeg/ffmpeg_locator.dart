@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../platform/android_bridge.dart';
 
@@ -37,11 +38,21 @@ class FfmpegLocator {
 
     final envFfmpeg = Platform.environment['HALFSIZE_FFMPEG'];
     final exeDir = p.dirname(Platform.resolvedExecutable);
+    String? installed;
+    try {
+      installed = p.join(
+        (await getApplicationSupportDirectory()).path,
+        'bin',
+        _exeName('ffmpeg'),
+      );
+    } catch (_) {}
     final candidates = <(String, String)>[
       if (envFfmpeg != null && envFfmpeg.isNotEmpty) (envFfmpeg, 'env'),
       (p.join(exeDir, 'bin', _exeName('ffmpeg')), 'bundled'),
       (p.join(exeDir, '..', 'Resources', 'bin', _exeName('ffmpeg')),
           'bundled'),
+      (p.join(exeDir, '..', 'Release', 'bin', _exeName('ffmpeg')), 'dev'),
+      if (installed != null) (installed, 'installed'),
       (_exeName('ffmpeg'), 'path'),
     ];
 

@@ -10,6 +10,6 @@ void main() {
     await tester.pumpWidget(HalfsizeXApp(settings: settings));
     await tester.pumpAndSettle();
     expect(find.text('halfsizeX'), findsWidgets);
-    expect(find.text('Choose video'), findsOneWidget);
+    expect(find.text('Choose videos'), findsOneWidget);
   });
 }

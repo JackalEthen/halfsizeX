@@ -8,7 +8,7 @@
 
 简体中文 | [English](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](./SPEC.md)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](./SPEC.md)
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.11-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Windows](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white)](#已支持的客户端)
@@ -34,15 +34,20 @@ halfsizeX 会根据目标大小、时长、分辨率和音频预算先生成编�
 ## 已实现功能
 
 - 指定目标大小（MB），内置 Discord、WhatsApp、WeChat、Gmail、Outlook、X 等平台预设。
-- 自定义大小和 CRF 模式。
+- 自定义大小，单任务可填写输出文件名。
 - H.264（`libx264`）和 H.265（`libx265`），可选 preset。
 - 目标大小两遍编码；首次结果超出目标时自动重试。
 - 自动选择是否降分辨率，也可强制保留原分辨率。
 - 保留或去掉音频；处理单声道/立体声和音频码率预算。
 - 检测 HDR（PQ/HLG），在 FFmpeg 支持时做 HDR→SDR tone mapping。
 - 进度、速度、剩余时间、遍数、取消，以及失败/取消后的临时文件清理。
+- 批量队列：多选视频，共用一套参数，串行压缩。
+- 任务页：单任务详情、重试/取消、输出路径和持久化历史。
+- 分享卡片导出 PNG；Android 调用系统分享面板。
+- 桌面端 FFmpeg 修复：检测缺失并下载安装 Windows/Linux 版本。
 - VMAF / SSIM 画质测量和人类可读结论。
-- 安全的输出命名（`原名.tag.mp4`，重名追加序号）和自定义输出目录。
+- 安全的输出命名（`原名.tag.mp4`、单任务文件名、重名追加序号）和自定义输出目录。
+- 三栏导航：压缩、任务、设置。
 - 桌面拖拽；所有平台使用原生文件选择器。
 - Windows 内嵌视频预览（原片 / 压缩后），基于 `media_kit`。
 - Android 前台服务、通知进度、SAF 输入、MediaStore Downloads 输出。
@@ -52,10 +57,9 @@ halfsizeX 会根据目标大小、时长、分辨率和音频预算先生成编�
 
 ## 未做
 
-- 批量队列（计划 v0.2）。
-- 分享卡片。
 - macOS 构建和打包（接口保持跨平台）。
-- 自动更新、文件关联、首次运行下载 FFmpeg。
+- macOS 自动安装 FFmpeg。
+- 自动更新、文件关联。
 - 硬件编码（当前使用软件 x264/x265）。
 - 字幕保留。
 
@@ -108,6 +112,9 @@ flutter build windows --release
 
 脚本需要 [WiX](https://wixtoolset.org/)（`dotnet tool install --global wix`）。
 
+Debug 运行不包含 FFmpeg；它会查找 `build/windows/x64/runner/Release/bin`、`HALFSIZE_FFMPEG`，
+或设置页“下载并修复”安装的位置。Release 包会把 FFmpeg 放进 `bin` 目录。
+
 ### Android
 
 ```bash
@@ -152,8 +159,8 @@ halfsizeX 自身使用 MIT 许可。FFmpeg、x264、x265 保留各自许可；�
 
 ```text
 app/                 Flutter 应用
-  lib/core/          probe、plan、encode、quality、FFmpeg 定位、设置
-  lib/features/      压缩和设置界面
+  lib/core/          probe、plan、encode、quality、FFmpeg 定位/安装、设置
+  lib/features/      压缩、任务、设置界面
   android/           Android runner、前台服务、jniLibs
   windows/           Windows runner 和安装包脚本
   linux/             Linux runner、desktop entry 和图标安装规则

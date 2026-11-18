@@ -65,6 +65,16 @@ class AndroidBridge {
     } catch (_) {}
   }
 
+  static Future<void> shareFile(String path, String mimeType) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('shareFile', {
+        'path': path,
+        'mimeType': mimeType,
+      });
+    } catch (_) {}
+  }
+
   static Future<void> startService(String title) async {
     if (!Platform.isAndroid) return;
     try {

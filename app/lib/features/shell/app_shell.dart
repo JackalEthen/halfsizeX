@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/settings/app_settings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand.dart';
 import '../../l10n/app_localizations.dart';
+import '../../l10n/task_text.dart';
 import '../compress/compress_page.dart';
 import '../settings/settings_page.dart';
+import '../tasks/task_controller.dart';
+import '../tasks/task_page.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.settings});
@@ -17,7 +22,23 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  late final TaskController _tasks;
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tasks = TaskController(settings: widget.settings);
+    unawaited(_tasks.init());
+  }
+
+  @override
+  void dispose() {
+    _tasks.dispose();
+    super.dispose();
+  }
+
+  void _openTasks() => setState(() => _index = 1);
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +57,13 @@ class _AppShellState extends State<AppShell> {
         child: IndexedStack(
           index: _index,
           children: [
-            CompressPage(compact: true, settings: widget.settings),
+            CompressPage(
+              compact: true,
+              settings: widget.settings,
+              tasks: _tasks,
+              onTasksAdded: _openTasks,
+            ),
+            TaskPage(tasks: _tasks, compact: true),
             SettingsPage(settings: widget.settings),
           ],
         ),
@@ -49,6 +76,11 @@ class _AppShellState extends State<AppShell> {
             icon: const Icon(Icons.compress_outlined),
             selectedIcon: const Icon(Icons.compress),
             label: l.tabCompress,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.list_alt_outlined),
+            selectedIcon: const Icon(Icons.list_alt),
+            label: TaskText.t(context, '任务', 'Tasks'),
           ),
           NavigationDestination(
             icon: const Icon(Icons.settings_outlined),
@@ -67,9 +99,16 @@ class _AppShellState extends State<AppShell> {
           children: [
             _TopBar(index: _index, onIndex: (i) => setState(() => _index = i)),
             Expanded(
-              child: _index == 0
-                  ? CompressPage(compact: false, settings: widget.settings)
-                  : SettingsPage(settings: widget.settings),
+              child: switch (_index) {
+                0 => CompressPage(
+                  compact: false,
+                  settings: widget.settings,
+                  tasks: _tasks,
+                  onTasksAdded: _openTasks,
+                ),
+                1 => TaskPage(tasks: _tasks, compact: false),
+                _ => SettingsPage(settings: widget.settings),
+              },
             ),
           ],
         ),
@@ -113,7 +152,11 @@ class _NavPills extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final l = AppLocalizations.of(context);
-    final items = [l.tabCompress, l.tabSettings];
+    final items = [
+      l.tabCompress,
+      TaskText.t(context, '任务', 'Tasks'),
+      l.tabSettings,
+    ];
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(

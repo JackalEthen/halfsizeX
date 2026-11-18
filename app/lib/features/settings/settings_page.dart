@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/ffmpeg/ffmpeg_installer.dart';
 import '../../core/ffmpeg/ffmpeg_locator.dart';
 import '../../core/platform/android_bridge.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/app_localizations.dart';
+import '../../l10n/task_text.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.settings});
@@ -21,13 +23,52 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  String _version = '0.1.0';
+  String _version = '0.2.0';
+  late Future<FfmpegInfo> _ffmpegFuture;
+  bool _repairing = false;
+  double _repairProgress = 0;
+  String? _repairError;
 
   @override
   void initState() {
     super.initState();
+    _ffmpegFuture = FfmpegLocator.resolve();
     _loadVersion();
     _loadOutputDir();
+  }
+
+  void _refreshFfmpeg() {
+    setState(() {
+      _ffmpegFuture = FfmpegLocator.resolve();
+      _repairError = null;
+    });
+  }
+
+  Future<void> _repairFfmpeg() async {
+    if (_repairing) return;
+    setState(() {
+      _repairing = true;
+      _repairProgress = 0;
+      _repairError = null;
+    });
+    try {
+      final info = await FfmpegInstaller.install(
+        onProgress: (value) {
+          if (mounted) setState(() => _repairProgress = value);
+        },
+      );
+      if (!mounted) return;
+      setState(() => _ffmpegFuture = Future.value(info));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(TaskText.t(context, 'FFmpeg 已安装', 'FFmpeg installed')),
+        ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _repairError = e.toString());
+    } finally {
+      if (mounted) setState(() => _repairing = false);
+    }
   }
 
   Future<void> _loadOutputDir() async {
@@ -42,9 +83,7 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final info = await PackageInfo.fromPlatform();
       if (mounted) setState(() => _version = info.version);
-    } catch (_) {
-      // The fallback version is enough when the plugin is unavailable.
-    }
+    } catch (_) {}
   }
 
   Future<void> _pickOutputDir() async {
@@ -112,6 +151,8 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 14),
             _outputSection(l),
             const SizedBox(height: 14),
+            _ffmpegSection(context, l),
+            const SizedBox(height: 14),
             _diagnosticsSection(context, l),
             const SizedBox(height: 14),
             _aboutSection(p, l),
@@ -162,6 +203,8 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+        _ffmpegSection(context, l),
         const SizedBox(height: 16),
         _aboutSection(p, l),
         const SizedBox(height: 16),
@@ -273,6 +316,137 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _ffmpegSection(BuildContext context, AppLocalizations l) {
+    final p = AppPalette.of(context);
+    return _Section(
+      title: 'FFmpeg',
+      child: FutureBuilder<FfmpegInfo>(
+        future: _ffmpegFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return Row(
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 10),
+                Text(l.checking),
+              ],
+            );
+          }
+          final info = snapshot.data ?? FfmpegInfo.missing;
+          final canInstall = !Platform.isAndroid && !Platform.isMacOS;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    info.ok ? Icons.check_circle_outline : Icons.warning_amber,
+                    size: 20,
+                    color: info.ok ? p.accent : p.warn,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          info.ok ? l.ffmpegReady : l.ffmpegMissing,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: p.text,
+                          ),
+                        ),
+                        if (info.ok) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            '${info.source}${info.version == null ? '' : ' · ${info.version}'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 11.5, color: p.dim),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (_repairing) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: _repairProgress == 0 ? null : _repairProgress,
+                    minHeight: 7,
+                    backgroundColor: p.panel2,
+                    color: p.accent,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  TaskText.t(
+                    context,
+                    '正在下载 FFmpeg… ${(_repairProgress * 100).round()}%',
+                    'Downloading FFmpeg… ${(_repairProgress * 100).round()}%',
+                  ),
+                  style: TextStyle(fontSize: 11.5, color: p.dim),
+                ),
+              ],
+              if (_repairError != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _repairError!,
+                  style: TextStyle(fontSize: 11.5, color: p.bad),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: _refreshFfmpeg,
+                    child: Text(TaskText.t(context, '重新检测', 'Check again')),
+                  ),
+                  if (!info.ok && canInstall) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _repairing ? null : _repairFfmpeg,
+                        child: Text(
+                          TaskText.t(context, '下载并修复', 'Download and repair'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (!info.ok && !canInstall) ...[
+                const SizedBox(height: 4),
+                Text(
+                  Platform.isAndroid
+                      ? TaskText.t(
+                          context,
+                          'Android 使用内置 FFmpeg，请重新安装应用。',
+                          'Android uses bundled FFmpeg. Reinstall the app.',
+                        )
+                      : TaskText.t(
+                          context,
+                          'macOS 暂不支持自动安装。',
+                          'Automatic install is not available on macOS yet.',
+                        ),
+                  style: TextStyle(fontSize: 11.5, color: p.dim),
+                ),
+              ],
+            ],
+          );
+        },
       ),
     );
   }

@@ -70,6 +70,20 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }
+                    "shareFile" -> {
+                        val path = call.argument<String>("path")
+                        val mimeType = call.argument<String>("mimeType") ?: "*/*"
+                        if (path == null) {
+                            result.error("bad_args", "path missing", null)
+                        } else {
+                            try {
+                                shareFile(path, mimeType)
+                                result.success(null)
+                            } catch (e: Exception) {
+                                result.error("share_failed", e.message, null)
+                            }
+                        }
+                    }
                     "startCompressService" -> {
                         val title = call.argument<String>("title") ?: "halfsizeX"
                         requestNotificationPermission()
@@ -205,6 +219,20 @@ class MainActivity : FlutterActivity() {
         }
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "video/mp4")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, null))
+    }
+
+    private fun shareFile(path: String, mimeType: String) {
+        val uri = if (path.startsWith("content://")) {
+            Uri.parse(path)
+        } else {
+            FileProvider.getUriForFile(this, "$packageName.fileprovider", File(path))
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = mimeType
+            putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         startActivity(Intent.createChooser(intent, null))

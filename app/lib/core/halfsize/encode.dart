@@ -401,9 +401,7 @@ void _cleanup(String passlog) {
         } catch (_) {}
       }
     }
-  } catch (_) {
-    // best effort
-  }
+  } catch (_) {}
 }
 
 String get _nullDevice => Platform.isWindows ? 'NUL' : '/dev/null';
