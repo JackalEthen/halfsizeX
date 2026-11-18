@@ -218,7 +218,22 @@ jobs:
 
       - name: Build macOS app
         shell: bash
-        run: flutter build macos --release
+        env:
+          FLUTTER_XCODE_CODE_SIGN_IDENTITY: ''
+          FLUTTER_XCODE_CODE_SIGNING_REQUIRED: 'NO'
+          FLUTTER_XCODE_CODE_SIGNING_ALLOWED: 'NO'
+          FLUTTER_XCODE_DEVELOPMENT_TEAM: ''
+        run: |
+          set -o pipefail
+          if flutter build macos --release 2>&1 | tee "$RUNNER_TEMP/macos-build.log"; then
+            exit 0
+          fi
+          {
+            grep -E 'error:|Error:|failed|Failed|Exception|CocoaPods|The following build commands failed' "$RUNNER_TEMP/macos-build.log" || tail -n 40 "$RUNNER_TEMP/macos-build.log"
+          } | tail -n 30 | while IFS= read -r line; do
+            echo "::error title=macOS build::$line"
+          done
+          exit 1
 
       - name: Package macOS app
         shell: bash
