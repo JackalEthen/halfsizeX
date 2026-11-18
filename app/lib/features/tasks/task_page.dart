@@ -10,6 +10,7 @@ import '../../core/halfsize/human.dart';
 import '../../core/platform/android_bridge.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand.dart';
+import '../../core/widgets/video_preview.dart';
 import '../../l10n/task_text.dart';
 import 'task_controller.dart';
 
@@ -324,8 +325,8 @@ class _TaskCard extends StatelessWidget {
               Text(
                 TaskText.t(
                   context,
-                  '目标 ${bytes(task.options.targetBytes)} · ${task.options.codec == 'h265' ? 'H.265' : 'H.264'}',
-                  'Target ${bytes(task.options.targetBytes)} · ${task.options.codec == 'h265' ? 'H.265' : 'H.264'}',
+                  '目标 ${_targetLabel(task)} · ${task.options.codec == 'h265' ? 'H.265' : 'H.264'}',
+                  'Target ${_targetLabel(task)} · ${task.options.codec == 'h265' ? 'H.265' : 'H.264'}',
                 ),
                 style: TextStyle(fontSize: 11.5, color: p.dim),
               ),
@@ -347,26 +348,36 @@ class _TaskCard extends StatelessWidget {
                 ),
               ] else if (task.status == TaskStatus.done) ...[
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      bytes(task.outputBytes),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: p.accent,
+                if (task.skipped)
+                  Text(
+                    TaskText.t(
+                      context,
+                      '已小于目标，跳过',
+                      'Already smaller — skipped',
+                    ),
+                    style: TextStyle(fontSize: 11.5, color: p.accent),
+                  )
+                else
+                  Row(
+                    children: [
+                      Text(
+                        bytes(task.outputBytes),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: p.accent,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      ratio(
-                        task.inputBytes,
-                        task.outputBytes,
-                      ).replaceAll('x', '×'),
-                      style: TextStyle(fontSize: 11.5, color: p.dim),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 6),
+                      Text(
+                        ratio(
+                          task.inputBytes,
+                          task.outputBytes,
+                        ).replaceAll('x', '×'),
+                        style: TextStyle(fontSize: 11.5, color: p.dim),
+                      ),
+                    ],
+                  ),
               ] else if (task.error != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -494,9 +505,13 @@ class _TaskDetailPane extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _Tag(text: bytes(task.options.targetBytes)),
+                  _Tag(text: _targetLabel(task)),
                   _Tag(text: task.options.codec == 'h265' ? 'H.265' : 'H.264'),
                   _Tag(text: task.options.preset),
+                  if (task.skipped)
+                    _Tag(
+                      text: TaskText.t(context, '已小于目标，跳过', 'Already smaller'),
+                    ),
                   if (task.info != null)
                     _Tag(
                       text:
@@ -504,6 +519,13 @@ class _TaskDetailPane extends StatelessWidget {
                     ),
                 ],
               ),
+              if (!task.skipped &&
+                  task.status == TaskStatus.done &&
+                  task.outputPath != null &&
+                  VideoPreview.isSupported) ...[
+                const SizedBox(height: 14),
+                VideoPreview(path: task.outputPath!),
+              ],
               if (task.isActive) ...[
                 const SizedBox(height: 18),
                 ClipRRect(
@@ -567,10 +589,12 @@ class _TaskDetailPane extends StatelessWidget {
               if (task.status == TaskStatus.done && result != null) ...[
                 const SizedBox(height: 18),
                 Text(
-                  ratio(
-                    task.inputBytes,
-                    result.outputBytes,
-                  ).replaceAll('x', '×'),
+                  task.skipped
+                      ? TaskText.t(context, '已跳过', 'Skipped')
+                      : ratio(
+                          task.inputBytes,
+                          result.outputBytes,
+                        ).replaceAll('x', '×'),
                   style: TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.w800,
@@ -1132,6 +1156,10 @@ class _ShareStat extends StatelessWidget {
     );
   }
 }
+
+String _targetLabel(CompressTask task) => task.options.crf != null
+    ? 'CRF ${task.options.crf}'
+    : bytes(task.options.targetBytes);
 
 String _statusLabel(BuildContext context, TaskStatus status) {
   switch (status) {

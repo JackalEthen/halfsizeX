@@ -8,12 +8,13 @@
 
 [简体中文](README-zh.md) | English
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)](./SPEC.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue)](./SPEC.md)
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.11-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Windows](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white)](#supported-clients)
 [![Android](https://img.shields.io/badge/Android-arm64%20%7C%20armv7-3DDC84?logo=android&logoColor=white)](#supported-clients)
 [![Linux](https://img.shields.io/badge/Linux-x64-FCC624?logo=linux&logoColor=black)](#supported-clients)
+[![macOS](https://img.shields.io/badge/macOS-arm64-000000?logo=apple&logoColor=white)](#supported-clients)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-bundled-007808)](#ffmpeg-and-licensing)
 [![Offline](https://img.shields.io/badge/Offline-100%25-success)](#privacy)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -37,10 +38,12 @@ bundled FFmpeg supports it.
 
 ### Implemented
 
-- Exact target size in MB, plus platform presets (Discord, WhatsApp, WeChat, Gmail, Outlook, X).
+- Exact target size in MB, plus platform presets (Discord, WhatsApp, WeChat, Gmail, Email, Outlook, X).
 - Custom target size and optional per-task output filename.
 - H.264 (`libx264`) and H.265 (`libx265`) with selectable preset.
+- Target-size or CRF quality mode.
 - Two-pass size-targeted encoding; automatic retry when the first result overshoots.
+- Files already smaller than the target are skipped instead of re-encoded.
 - Automatic downscale selection, with an option to keep the original resolution.
 - Keep or drop audio; mono/stereo handling and audio bitrate budget.
 - HDR (PQ/HLG) detection and HDR-to-SDR tone mapping when the FFmpeg build supports it.
@@ -48,21 +51,22 @@ bundled FFmpeg supports it.
 - Batch queue: select multiple videos, share one setting set, compress serially.
 - Task page with per-task detail, retry/cancel, output path, and persisted history.
 - Share card export as PNG; native share sheet on Android.
-- Desktop FFmpeg repair: detect missing binaries and install a Windows/Linux build.
+- Desktop FFmpeg repair: SHA-256 verified Windows/Linux/macOS binaries with mirror fallback.
 - VMAF / SSIM quality measurement with a human-readable verdict.
 - Safe output naming (`name.tag.mp4`, per-task names, collision suffixes) and a configurable output directory.
 - Three-tab navigation: Compress, Tasks, Settings.
 - Drag and drop on desktop; native file picker on all platforms.
-- Embedded video preview on Windows (original / compressed), powered by `media_kit`.
+- Embedded video preview on Windows/Linux/macOS: source before encoding, output in task detail; powered by `media_kit`. Linux needs system libmpv2.
 - Android foreground service with notification progress; SAF input and MediaStore Downloads output.
 - Chinese and English UI; system/dark/light theme; persisted settings.
 - Windows MSI installer and portable ZIP.
 - Linux AppImage, deb, rpm and portable tarball.
+- macOS DMG and ZIP, with FFmpeg bundled.
 
 ### Not implemented yet
 
-- macOS build and packaging (interfaces are kept platform-neutral).
-- Automatic FFmpeg install on macOS.
+- Automatic FFmpeg install on macOS (the packaged app bundles it).
+- Intel macOS build (current CI publishes arm64).
 - Auto-update and file associations.
 - Hardware-accelerated encoding (current builds use software x264/x265).
 - Subtitle retention.
@@ -74,8 +78,11 @@ bundled FFmpeg supports it.
 | Windows x64 | Supported | Release build, MSI + portable ZIP, embedded preview |
 | Android arm64-v8a | Supported | Native FFmpeg libraries bundled; foreground service |
 | Android armeabi-v7a | Supported | Native FFmpeg libraries bundled |
-| Linux x64 | Supported | AppImage, deb, rpm and portable tarball; player libraries still being finished |
-| macOS | Planned | No CI or release artifact yet |
+| Linux x64 | Supported | AppImage, deb, rpm and portable tarball; preview needs system libmpv2 (deb/rpm declare it) |
+| macOS arm64 | Supported | DMG and ZIP; FFmpeg bundled; embedded preview; ad-hoc signed unless a Developer ID is configured |
+
+Linux preview uses the system `libmpv`. Install `libmpv2` (or `libmpv1` on older distributions) if the
+AppImage or portable build shows no player; the deb and rpm packages pull it in automatically.
 
 ## Download
 
@@ -89,6 +96,8 @@ Once a `v*` tag is pushed, the release workflow publishes these artifacts:
 - `halfsizeX-<version>-linux-x64.deb`
 - `halfsizeX-<version>-linux-x64.rpm`
 - `halfsizeX-<version>-linux-x64-portable.tar.gz`
+- `halfsizeX-<version>-macos-arm64.dmg`
+- `halfsizeX-<version>-macos-arm64.zip`
 
 ## Build from source
 
@@ -137,19 +146,32 @@ build falls back to the debug key.
 
 ```bash
 cd app
-sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libmpv-dev
 flutter build linux --release
 ```
 
 The release workflow then runs `tool/package_linux.sh` to build the AppImage, deb, rpm and portable
-tarball.
+tarball. The deb and rpm declare `libmpv2`/`mpv-libs`; AppImage and portable builds need libmpv2
+installed on the target system for embedded preview.
+
+### macOS
+
+```bash
+cd app
+flutter build macos --release
+FFMPEG_DIR=/path/to/ffmpeg bash tool/package_macos.sh
+```
+
+`FFMPEG_DIR` must contain `ffmpeg`, `ffprobe` and optionally `LICENSE`. The script bundles them in
+`Contents/Resources/bin`, signs the app (ad-hoc unless `MACOS_SIGN_IDENTITY` is set), and writes a
+DMG and ZIP to `dist/`. CI builds the arm64 package on `macos-15`.
 
 ## CI/CD
 
 - `ci.yml` runs `flutter analyze` and `flutter test` on pushes and pull requests.
-- `build.yml` builds Android, Windows and Linux artifacts on manual dispatch and `v*` tags.
-- Tag builds publish a GitHub Release with the Android APKs, Windows ZIP/MSI, and Linux
-  AppImage/deb/rpm/portable tarball.
+- `build.yml` builds Android, Windows, Linux and macOS artifacts on manual dispatch and `v*` tags.
+- Tag builds publish a GitHub Release with the Android APKs, Windows ZIP/MSI, Linux
+  AppImage/deb/rpm/portable tarball, and macOS DMG/ZIP.
 
 Android release signing reads `android/key.properties` or the `HALFSIZE_*` environment variables; CI
 uses repository secrets. See the workflow files under `.github/workflows/` for the exact commands.
@@ -174,6 +196,8 @@ app/                 Flutter application
   android/           Android runner, service, jniLibs
   windows/           Windows runner and installer script
   linux/             Linux runner, desktop entry and icon install rules
+  macos/             macOS runner and Xcode project
+  tool/              platform packaging scripts
   test/              unit and widget tests
 ```
 

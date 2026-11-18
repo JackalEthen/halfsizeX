@@ -1,12 +1,13 @@
 name: halfsizex
 description: "Compress a video to an exact size, locally."
 publish_to: 'none'
-version: 0.2.0+1
+version: 0.3.0+1
 
 environment:
   sdk: ^3.11.4
 
 dependencies:
+  crypto: ^3.0.6
   desktop_drop: 0.8.4
   file_picker: ^13.3.2
   flutter:
@@ -15,6 +16,8 @@ dependencies:
     sdk: flutter
   intl: ^0.20.2
   media_kit: ^1.2.6
+  media_kit_libs_linux: ^1.2.1
+  media_kit_libs_macos_video: ^1.1.4
   media_kit_libs_windows_video: ^1.0.11
   media_kit_video: ^2.0.1
   package_info_plus: ^10.2.2

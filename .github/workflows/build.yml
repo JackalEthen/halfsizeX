@@ -131,7 +131,7 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-13-dev rpm
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-13-dev libmpv-dev rpm
 
       - uses: subosito/flutter-action@v2
         with:
@@ -177,10 +177,60 @@ jobs:
             app/dist/*portable.tar.gz
           if-no-files-found: error
 
+  macos:
+    name: macOS app
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.6'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Download FFmpeg
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            arm64) suffix=arm64 ;;
+            x86_64) suffix=x64 ;;
+            *) echo "Unsupported macOS architecture: $(uname -m)" >&2; exit 1 ;;
+          esac
+          base='https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1'
+          mkdir -p "$RUNNER_TEMP/ffmpeg"
+          curl -fL -o "$RUNNER_TEMP/ffmpeg/ffmpeg" "$base/ffmpeg-darwin-$suffix"
+          curl -fL -o "$RUNNER_TEMP/ffmpeg/ffprobe" "$base/ffprobe-darwin-$suffix"
+          curl -fL -o "$RUNNER_TEMP/ffmpeg/LICENSE" "$base/darwin-$suffix.LICENSE"
+          chmod +x "$RUNNER_TEMP/ffmpeg/ffmpeg" "$RUNNER_TEMP/ffmpeg/ffprobe"
+          echo "FFMPEG_DIR=$RUNNER_TEMP/ffmpeg" >> "$GITHUB_ENV"
+
+      - name: Build and package
+        shell: bash
+        run: |
+          flutter build macos --release
+          bash tool/package_macos.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dist
+          path: |
+            app/dist/*macos*.zip
+            app/dist/*macos*.dmg
+          if-no-files-found: error
+
   release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [android, windows, linux]
+    needs: [android, windows, linux, macos]
     runs-on: ubuntu-latest
 
     steps:

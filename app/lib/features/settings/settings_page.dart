@@ -23,7 +23,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  String _version = '0.2.0';
+  String _version = '0.3.0';
   late Future<FfmpegInfo> _ffmpegFuture;
   bool _repairing = false;
   double _repairProgress = 0;
@@ -341,7 +341,7 @@ class _SettingsPageState extends State<SettingsPage> {
             );
           }
           final info = snapshot.data ?? FfmpegInfo.missing;
-          final canInstall = !Platform.isAndroid && !Platform.isMacOS;
+          final canInstall = FfmpegInstaller.canInstall;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -438,8 +438,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         )
                       : TaskText.t(
                           context,
-                          'macOS 暂不支持自动安装。',
-                          'Automatic install is not available on macOS yet.',
+                          '当前平台/架构暂不支持自动安装。',
+                          'Automatic install is not available for this platform.',
                         ),
                   style: TextStyle(fontSize: 11.5, color: p.dim),
                 ),

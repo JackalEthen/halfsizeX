@@ -31,4 +31,30 @@ void main() {
     expect(copy.status, 'done');
     expect(copy.outputPath, 'tiny.mp4');
   });
+
+  test('CRF and skipped flags survive a json round trip', () {
+    final task =
+        CompressTask(
+            id: '2',
+            inputPath: 'small.mp4',
+            options: const TaskOptions(
+              targetBytes: 20000000,
+              codec: 'h264',
+              preset: 'medium',
+              downscale: true,
+              audio: true,
+              qualityCheck: false,
+              crf: 23,
+            ),
+            createdAt: DateTime(2026, 1, 2, 3, 4),
+          )
+          ..status = TaskStatus.done
+          ..skipped = true
+          ..outputPath = 'small.mp4';
+
+    final copy = TaskRecord.fromJson(TaskRecord.fromTask(task).toJson());
+
+    expect(copy.crf, 23);
+    expect(copy.skipped, true);
+  });
 }

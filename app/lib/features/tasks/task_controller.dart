@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -20,6 +20,7 @@ class TaskOptions {
     required this.downscale,
     required this.audio,
     required this.qualityCheck,
+    this.crf,
     this.outputName,
   });
 
@@ -29,6 +30,7 @@ class TaskOptions {
   final bool downscale;
   final bool audio;
   final bool qualityCheck;
+  final int? crf;
   final String? outputName;
 }
 
@@ -54,6 +56,7 @@ class CompressTask {
   q.QualityVerdict? verdict;
   String? outputPath;
   String? error;
+  bool skipped = false;
   DateTime? finishedAt;
 
   String get name => p.basename(inputPath);
@@ -72,6 +75,8 @@ class TaskRecord {
     required this.codec,
     required this.preset,
     required this.targetBytes,
+    this.crf,
+    this.skipped = false,
     required this.inputBytes,
     required this.outputBytes,
     required this.elapsedMs,
@@ -89,6 +94,8 @@ class TaskRecord {
   final String codec;
   final String preset;
   final int targetBytes;
+  final int? crf;
+  final bool skipped;
   final int? inputBytes;
   final int? outputBytes;
   final int? elapsedMs;
@@ -108,6 +115,8 @@ class TaskRecord {
     'codec': codec,
     'preset': preset,
     'targetBytes': targetBytes,
+    'crf': crf,
+    'skipped': skipped,
     'inputBytes': inputBytes,
     'outputBytes': outputBytes,
     'elapsedMs': elapsedMs,
@@ -129,6 +138,8 @@ class TaskRecord {
       codec: '${json['codec'] ?? 'h264'}',
       preset: '${json['preset'] ?? 'medium'}',
       targetBytes: (json['targetBytes'] as num?)?.toInt() ?? 0,
+      crf: (json['crf'] as num?)?.toInt(),
+      skipped: json['skipped'] == true,
       inputBytes: (json['inputBytes'] as num?)?.toInt(),
       outputBytes: (json['outputBytes'] as num?)?.toInt(),
       elapsedMs: (json['elapsedMs'] as num?)?.toInt(),
@@ -148,6 +159,8 @@ class TaskRecord {
     codec: task.options.codec,
     preset: task.options.preset,
     targetBytes: task.options.targetBytes,
+    crf: task.options.crf,
+    skipped: task.skipped,
     inputBytes: task.inputBytes,
     outputBytes: task.outputBytes,
     elapsedMs: task.result?.elapsedMs,
@@ -186,9 +199,8 @@ class TaskController extends ChangeNotifier {
           ..clear()
           ..addAll(
             list.map(
-              (item) => TaskRecord.fromJson(
-                Map<String, Object?>.from(item as Map),
-              ),
+              (item) =>
+                  TaskRecord.fromJson(Map<String, Object?>.from(item as Map)),
             ),
           );
       } catch (_) {
@@ -250,6 +262,7 @@ class TaskController extends ChangeNotifier {
       ..verdict = null
       ..outputPath = null
       ..error = null
+      ..skipped = false
       ..finishedAt = null;
     _notify();
     _pump();
@@ -313,6 +326,7 @@ class TaskController extends ChangeNotifier {
       ..verdict = null
       ..outputPath = null
       ..error = null
+      ..skipped = false
       ..finishedAt = null;
     _notify();
 
@@ -324,6 +338,7 @@ class TaskController extends ChangeNotifier {
         downscale: task.options.downscale,
         audio: task.options.audio,
         qualityCheck: task.options.qualityCheck,
+        crf: task.options.crf,
         outputName: task.options.outputName,
       );
     _worker = worker;
@@ -337,6 +352,7 @@ class TaskController extends ChangeNotifier {
       task.verdict = worker.verdict;
       task.outputPath = worker.outputPath;
       task.error = worker.error;
+      task.skipped = worker.skipped;
       if (worker.stage == CompressStage.measuring) {
         task.status = TaskStatus.measuring;
       } else if (worker.stage == CompressStage.encoding) {
@@ -416,4 +432,3 @@ class TaskController extends ChangeNotifier {
     super.dispose();
   }
 }
-

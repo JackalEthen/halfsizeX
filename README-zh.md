@@ -8,12 +8,13 @@
 
 简体中文 | [English](README.md)
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)](./SPEC.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue)](./SPEC.md)
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.11-0175C2?logo=dart&logoColor=white)](https://dart.dev)
 [![Windows](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white)](#已支持的客户端)
 [![Android](https://img.shields.io/badge/Android-arm64%20%7C%20armv7-3DDC84?logo=android&logoColor=white)](#已支持的客户端)
 [![Linux](https://img.shields.io/badge/Linux-x64-FCC624?logo=linux&logoColor=black)](#已支持的客户端)
+[![macOS](https://img.shields.io/badge/macOS-arm64-000000?logo=apple&logoColor=white)](#已支持的客户端)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-bundled-007808)](#ffmpeg-与许可)
 [![Offline](https://img.shields.io/badge/Offline-100%25-success)](#隐私)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -33,10 +34,12 @@ halfsizeX 会根据目标大小、时长、分辨率和音频预算先生成编�
 
 ## 已实现功能
 
-- 指定目标大小（MB），内置 Discord、WhatsApp、WeChat、Gmail、Outlook、X 等平台预设。
+- 指定目标大小（MB），内置 Discord、WhatsApp、WeChat、Gmail、Email、Outlook、X 等平台预设。
 - 自定义大小，单任务可填写输出文件名。
 - H.264（`libx264`）和 H.265（`libx265`），可选 preset。
+- 目标大小或 CRF 画质模式。
 - 目标大小两遍编码；首次结果超出目标时自动重试。
+- 源文件已小于目标时直接跳过，不再重复编码。
 - 自动选择是否降分辨率，也可强制保留原分辨率。
 - 保留或去掉音频；处理单声道/立体声和音频码率预算。
 - 检测 HDR（PQ/HLG），在 FFmpeg 支持时做 HDR→SDR tone mapping。
@@ -44,21 +47,22 @@ halfsizeX 会根据目标大小、时长、分辨率和音频预算先生成编�
 - 批量队列：多选视频，共用一套参数，串行压缩。
 - 任务页：单任务详情、重试/取消、输出路径和持久化历史。
 - 分享卡片导出 PNG；Android 调用系统分享面板。
-- 桌面端 FFmpeg 修复：检测缺失并下载安装 Windows/Linux 版本。
+- 桌面端 FFmpeg 修复：Windows/Linux/macOS 下载均校验 SHA-256，失败自动切换镜像。
 - VMAF / SSIM 画质测量和人类可读结论。
 - 安全的输出命名（`原名.tag.mp4`、单任务文件名、重名追加序号）和自定义输出目录。
 - 三栏导航：压缩、任务、设置。
 - 桌面拖拽；所有平台使用原生文件选择器。
-- Windows 内嵌视频预览（原片 / 压缩后），基于 `media_kit`。
+- Windows/Linux/macOS 内嵌视频预览：压缩前看原片，任务详情看输出；基于 `media_kit`，Linux 需要系统 libmpv2。
 - Android 前台服务、通知进度、SAF 输入、MediaStore Downloads 输出。
 - 中英文界面；跟随系统/深色/浅色主题；设置持久化。
 - Windows MSI 安装包和便携 ZIP。
 - Linux AppImage、deb、rpm 和便携 tar.gz。
+- macOS DMG 和 ZIP，随包内置 FFmpeg。
 
 ## 未做
 
-- macOS 构建和打包（接口保持跨平台）。
-- macOS 自动安装 FFmpeg。
+- macOS 自动安装 FFmpeg（发布包已内置）。
+- Intel macOS 构建（当前 CI 发布 arm64）。
 - 自动更新、文件关联。
 - 硬件编码（当前使用软件 x264/x265）。
 - 字幕保留。
@@ -70,8 +74,11 @@ halfsizeX 会根据目标大小、时长、分辨率和音频预算先生成编�
 | Windows x64 | 已支持 | Release 构建，MSI + 便携 ZIP，内嵌预览 |
 | Android arm64-v8a | 已支持 | 内置原生 FFmpeg，前台服务 |
 | Android armeabi-v7a | 已支持 | 内置原生 FFmpeg |
-| Linux x64 | 已支持 | AppImage、deb、rpm 和便携包；播放器库仍在完善 |
-| macOS | 计划中 | 暂无 CI 和发布产物 |
+| Linux x64 | 已支持 | AppImage、deb、rpm 和便携包；内嵌预览依赖系统 libmpv2（deb/rpm 已声明） |
+| macOS arm64 | 已支持 | DMG 和 ZIP；内置 FFmpeg；内嵌预览；未配置 Developer ID 时使用 ad-hoc 签名 |
+
+Linux 内嵌预览使用系统 `libmpv`。如果 AppImage 或便携包没有播放器，请安装 `libmpv2`（旧发行版可装
+`libmpv1`）；deb 和 rpm 会自动带上依赖。
 
 ## 下载
 
@@ -85,6 +92,8 @@ halfsizeX 会根据目标大小、时长、分辨率和音频预算先生成编�
 - `halfsizeX-<version>-linux-x64.deb`
 - `halfsizeX-<version>-linux-x64.rpm`
 - `halfsizeX-<version>-linux-x64-portable.tar.gz`
+- `halfsizeX-<version>-macos-arm64.dmg`
+- `halfsizeX-<version>-macos-arm64.zip`
 
 ## 从源码构建
 
@@ -130,17 +139,30 @@ Android FFmpeg 二进制位于 `app/android/app/src/main/jniLibs/<abi>/`。Relea
 
 ```bash
 cd app
-sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libmpv-dev
 flutter build linux --release
 ```
 
-release 工作流随后运行 `tool/package_linux.sh`，生成 AppImage、deb、rpm 和便携 tar.gz。
+release 工作流随后运行 `tool/package_linux.sh`，生成 AppImage、deb、rpm 和便携 tar.gz。deb 和 rpm 已声明 `libmpv2` / `mpv-libs` 依赖；AppImage 和便携包需要目标系统安装 libmpv2 才能显示内嵌预览。
+
+### macOS
+
+```bash
+cd app
+flutter build macos --release
+FFMPEG_DIR=/path/to/ffmpeg bash tool/package_macos.sh
+```
+
+`FFMPEG_DIR` 需要包含 `ffmpeg`、`ffprobe`，可选 `LICENSE`。脚本会把它们放进
+`Contents/Resources/bin`，签名应用（未设置 `MACOS_SIGN_IDENTITY` 时使用 ad-hoc），并在
+`dist/` 生成 DMG 和 ZIP。CI 在 `macos-15` 上构建 arm64 包。
 
 ## CI/CD
 
 - `ci.yml`：在 push 和 pull request 时运行 `flutter analyze`、`flutter test`。
-- `build.yml`：手动触发或 `v*` tag 时构建 Android、Windows、Linux 产物。
-- tag 构建会把 Android APK、Windows ZIP/MSI、Linux AppImage/deb/rpm/便携包发布到 GitHub Release。
+- `build.yml`：手动触发或 `v*` tag 时构建 Android、Windows、Linux、macOS 产物。
+- tag 构建会把 Android APK、Windows ZIP/MSI、Linux AppImage/deb/rpm/便携包、macOS DMG/ZIP
+  发布到 GitHub Release。
 
 Android 正式签名通过 `android/key.properties` 或 `HALFSIZE_*` 环境变量读取；CI 使用仓库 secrets。
 具体命令见 `.github/workflows/`。
@@ -164,6 +186,8 @@ app/                 Flutter 应用
   android/           Android runner、前台服务、jniLibs
   windows/           Windows runner 和安装包脚本
   linux/             Linux runner、desktop entry 和图标安装规则
+  macos/             macOS runner 和 Xcode 工程
+  tool/              各平台打包脚本
   test/              单元测试和 widget 测试
 ```
 

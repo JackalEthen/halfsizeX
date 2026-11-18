@@ -10,6 +10,7 @@ import '../../core/halfsize/human.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brand.dart';
+import '../../core/widgets/video_preview.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/task_text.dart';
 import '../tasks/task_controller.dart';
@@ -42,6 +43,9 @@ class _CompressPageState extends State<CompressPage> {
   bool _downscale = true;
   bool _qualityCheck = true;
   bool _audio = true;
+  bool _crfMode = false;
+  int _crf = 23;
+  String? _presetId;
   bool _picking = false;
 
   @override
@@ -52,6 +56,7 @@ class _CompressPageState extends State<CompressPage> {
     _codec = s?.defaultCodec ?? _codec;
     _preset = s?.defaultPreset ?? _preset;
     _qualityCheck = s?.qualityCheck ?? _qualityCheck;
+    _presetId = _presetForBytes(_targetBytes)?.id;
   }
 
   @override
@@ -109,6 +114,7 @@ class _CompressPageState extends State<CompressPage> {
         downscale: _downscale,
         audio: _audio,
         qualityCheck: _qualityCheck,
+        crf: _crfMode ? _crf : null,
         outputName: single ? _output.text.trim() : null,
       ),
     );
@@ -247,10 +253,7 @@ class _CompressPageState extends State<CompressPage> {
             ),
           ),
           const SizedBox(width: 24),
-          SizedBox(
-            width: 400,
-            child: ListView(children: [_configCard(p, l)]),
-          ),
+          SizedBox(width: 400, child: ListView(children: [_configCard(p, l)])),
         ],
       ),
     );
@@ -283,10 +286,7 @@ class _CompressPageState extends State<CompressPage> {
                 ),
               ),
               const Spacer(),
-              Text(
-                bytes(total),
-                style: TextStyle(fontSize: 12, color: p.dim),
-              ),
+              Text(bytes(total), style: TextStyle(fontSize: 12, color: p.dim)),
             ],
           ),
           const SizedBox(height: 10),
@@ -339,6 +339,12 @@ class _CompressPageState extends State<CompressPage> {
                 ],
               ),
             ),
+          if (!widget.compact &&
+              VideoPreview.isSupported &&
+              _paths.length == 1) ...[
+            const SizedBox(height: 8),
+            VideoPreview(path: _paths.first),
+          ],
           const SizedBox(height: 4),
           OutlinedButton.icon(
             onPressed: _picking ? null : _pick,
@@ -362,25 +368,72 @@ class _CompressPageState extends State<CompressPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l.targetSize, style: _label(p)),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Text(l.mode, style: _label(p)),
+          const SizedBox(height: 8),
+          Row(
             children: [
-              for (final mb in const [20, 16, 5])
-                _Chip(
-                  label: '$mb MB',
-                  selected: _targetBytes == mb * 1000000,
-                  onTap: () => setState(() => _targetBytes = mb * 1000000),
+              Expanded(
+                child: _SegChip(
+                  label: l.modeSize,
+                  selected: !_crfMode,
+                  onTap: () => setState(() => _crfMode = false),
                 ),
-              _Chip(
-                label: l.custom,
-                selected: !const [20, 16, 5].contains(_targetBytes ~/ 1000000),
-                onTap: () => _pickCustom(context),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SegChip(
+                  label: l.modeCrf,
+                  selected: _crfMode,
+                  onTap: () => setState(() => _crfMode = true),
+                ),
               ),
             ],
           ),
+          const SizedBox(height: 18),
+          if (_crfMode) ...[
+            Text('CRF', style: _label(p)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final value in const [18, 23, 28])
+                  _Chip(
+                    label: '$value',
+                    selected: _crf == value,
+                    onTap: () => setState(() => _crf = value),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l.crfHint,
+              style: TextStyle(fontSize: 11, color: p.dim, height: 1.4),
+            ),
+          ] else ...[
+            Text(l.targetSize, style: _label(p)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final preset in _presets)
+                  _Chip(
+                    label: preset.label,
+                    selected: _presetId == preset.id,
+                    onTap: () => setState(() {
+                      _presetId = preset.id;
+                      _targetBytes = preset.bytes;
+                    }),
+                  ),
+                _Chip(
+                  label: l.custom,
+                  selected: _presetId == null,
+                  onTap: () => _pickCustom(context),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 18),
           Text(l.codec, style: _label(p)),
           const SizedBox(height: 8),
@@ -607,7 +660,10 @@ class _CompressPageState extends State<CompressPage> {
     if (text == null || !mounted) return;
     try {
       final value = parseSize(text);
-      setState(() => _targetBytes = value);
+      setState(() {
+        _targetBytes = value;
+        _presetId = null;
+      });
     } catch (_) {
       messenger.showSnackBar(SnackBar(content: Text(l.invalidSize)));
     }
@@ -623,6 +679,32 @@ class _CompressPageState extends State<CompressPage> {
 
   static TextStyle _label(AppPalette p) =>
       TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: p.muted);
+}
+
+class _Preset {
+  const _Preset(this.id, this.label, this.bytes);
+
+  final String id;
+  final String label;
+  final int bytes;
+}
+
+const _presets = <_Preset>[
+  _Preset('discord', 'Discord 20 MB', 20000000),
+  _Preset('whatsapp', 'WhatsApp 16 MB', 16000000),
+  _Preset('wechat', 'WeChat 20 MB', 20000000),
+  _Preset('gmail', 'Gmail 18 MB', 18000000),
+  _Preset('email', 'Email 18 MB', 18000000),
+  _Preset('outlook', 'Outlook 15 MB', 15000000),
+  _Preset('x', 'X 512 MB', 512000000),
+  _Preset('small', '5 MB', 5000000),
+];
+
+_Preset? _presetForBytes(int bytes) {
+  for (final preset in _presets) {
+    if (preset.bytes == bytes) return preset;
+  }
+  return null;
 }
 
 class _GradientTitle extends StatelessWidget {

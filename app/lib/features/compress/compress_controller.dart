@@ -39,6 +39,7 @@ class CompressController extends ChangeNotifier {
   q.QualitySample? quality;
   q.QualityVerdict? verdict;
   int? crf;
+  bool skipped = false;
   EncodeToSizeResult? result;
   String? error;
   String? outputName;
@@ -70,12 +71,13 @@ class CompressController extends ChangeNotifier {
     required bool downscale,
     required bool audio,
     required bool qualityCheck,
+    int? crf,
     String? outputName,
   }) {
     _customized = true;
     this.targetBytes = targetBytes;
     platformPreset = null;
-    crf = null;
+    this.crf = crf;
     this.codec = codec;
     this.preset = preset;
     this.downscale = downscale;
@@ -107,6 +109,7 @@ class CompressController extends ChangeNotifier {
     plan = null;
     result = null;
     progress = null;
+    skipped = false;
     error = null;
     stage = CompressStage.probing;
     _notify();
@@ -223,6 +226,24 @@ class CompressController extends ChangeNotifier {
       return;
     }
 
+    skipped = false;
+    if (current.mode == 'size' && i.sizeBytes <= (current.targetBytes ?? 0)) {
+      skipped = true;
+      outputPath = i.file;
+      result = EncodeToSizeResult(
+        outputBytes: i.sizeBytes,
+        elapsedMs: 0,
+        attempts: 0,
+        missedTarget: false,
+      );
+      quality = null;
+      verdict = q.verdict();
+      error = null;
+      stage = CompressStage.done;
+      _notify();
+      return;
+    }
+
     stage = CompressStage.encoding;
     progress = null;
     result = null;
@@ -323,6 +344,7 @@ class CompressController extends ChangeNotifier {
     result = null;
     quality = null;
     verdict = null;
+    skipped = false;
     error = null;
     outputName = null;
     _notify();

@@ -71,7 +71,7 @@ Version: $version
 Section: video
 Priority: optional
 Architecture: amd64
-Depends: libgtk-3-0
+Depends: libgtk-3-0, libmpv1 | libmpv2
 Maintainer: halfsizeX contributors
 Homepage: https://github.com/YKLovePython/halfsize
 Description: Compress a video to an exact size, locally.
@@ -92,7 +92,7 @@ Release: 1
 Summary: Compress a video to an exact size
 License: MIT
 BuildArch: x86_64
-Requires: gtk3
+Requires: gtk3, mpv-libs
 
 %description
 Compress a video to an exact size, locally.
