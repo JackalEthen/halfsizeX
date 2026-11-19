@@ -182,7 +182,7 @@ jobs:
 
   macos:
     name: macOS app
-    runs-on: macos-26
+    runs-on: macos-15-intel
     defaults:
       run:
         working-directory: app
@@ -203,11 +203,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          case "$(uname -m)" in
-            arm64) suffix=arm64 ;;
-            x86_64) suffix=x64 ;;
-            *) echo "Unsupported macOS architecture: $(uname -m)" >&2; exit 1 ;;
-          esac
+          suffix=arm64
           base='https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1'
           mkdir -p "$RUNNER_TEMP/ffmpeg"
           curl -fL --retry 5 --retry-delay 5 -o "$RUNNER_TEMP/ffmpeg/ffmpeg" "$base/ffmpeg-darwin-$suffix"
@@ -223,6 +219,7 @@ jobs:
           FLUTTER_XCODE_CODE_SIGNING_REQUIRED: 'NO'
           FLUTTER_XCODE_CODE_SIGNING_ALLOWED: 'NO'
           FLUTTER_XCODE_DEVELOPMENT_TEAM: ''
+          FLUTTER_XCODE_ARCHS: arm64
         run: |
           set -o pipefail
           if flutter build macos --release 2>&1 | tee "$RUNNER_TEMP/macos-build.log"; then

@@ -5,10 +5,10 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 app="$root/build/macos/Build/Products/Release/halfsizeX.app"
 dist="$root/dist"
 version="$(sed -nE 's/^version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' "$root/pubspec.yaml" | head -n1)"
-arch="$(uname -m)"
+arch="$(lipo -archs "$app/Contents/MacOS/halfsizeX")"
 case "$arch" in
-  arm64) arch=arm64 ;;
-  x86_64) arch=x64 ;;
+  *arm64*) arch=arm64 ;;
+  *x86_64*) arch=x64 ;;
 esac
 
 if [[ ! -d "$app" ]]; then
